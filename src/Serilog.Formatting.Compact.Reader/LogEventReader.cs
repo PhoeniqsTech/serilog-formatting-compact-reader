@@ -15,11 +15,11 @@
 using System;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog.Events;
 using Serilog.Parsing;
-using System.Linq;
 
 namespace Serilog.Formatting.Compact.Reader
 {
@@ -125,10 +125,18 @@ namespace Serilog.Formatting.Compact.Reader
             var level = LogEventLevel.Information;
             if (TryGetOptionalField(lineNumber, jObject, ClefFields.Level, out string l))
                 level = (LogEventLevel)Enum.Parse(typeof(LogEventLevel), l);
-            Exception exception = null;
+            TextException exception = null;
             if (TryGetOptionalField(lineNumber, jObject, ClefFields.Exception, out string ex))
-                exception = new TextException(ex);
-
+                exception = new TextException()
+                {
+                    RealStackTrace = ex
+                };
+            if (TryGetExceptionDetails(jObject, out string exMessage, out string source, out string type))
+            {
+                exception.RealMessage = exMessage;
+                exception.RealSource = source;
+                exception.TypeName = type;
+            }
             var parsedTemplate = messageTemplate == null ?
                 new MessageTemplate(Enumerable.Empty<MessageTemplateToken>()) :
                 Parser.Parse(messageTemplate);
@@ -166,7 +174,29 @@ namespace Serilog.Formatting.Compact.Reader
 
             return new LogEvent(timestamp, level, exception, parsedTemplate, properties);
         }
+        static bool TryGetExceptionDetails(JObject data, out string message, out string source, out string type)
+        {
+            bool val = false;
+            if (!data.TryGetValue(ClefFields.ExceptionDetail, out JToken token) && token?.Type != JTokenType.Object)
+            {
+                message = null;
+                source = null;
+                type = null;
+            }
+            else
+            {
+                ((JObject)token).TryGetValue("Message", out JToken messageToken);
+                message = messageToken.Value<string>();
 
+                ((JObject)token).TryGetValue("Source", out JToken sourceToken);
+                source = sourceToken.Value<string>();
+
+                ((JObject)token).TryGetValue("Type", out JToken typeToken);
+                type = typeToken.Value<string>();
+                val = true;
+            }
+            return val;
+        }
         static bool TryGetOptionalField(int lineNumber, JObject data, string field, out string value)
         {
             JToken token;

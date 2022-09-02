@@ -34,6 +34,8 @@ namespace Serilog.Formatting.Compact.Reader
         const string Prefix = "@";
         const string EscapedInitialAt = "@@";
 
+        public const string ExceptionDetail = "ExceptionDetail";
+
         public static string Unescape(string name)
         {
             if (name.StartsWith(EscapedInitialAt))

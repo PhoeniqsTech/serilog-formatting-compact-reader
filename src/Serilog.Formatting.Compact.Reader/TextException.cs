@@ -13,22 +13,29 @@
 // limitations under the License.
 
 using System;
+using Newtonsoft.Json;
 
 namespace Serilog.Formatting.Compact.Reader
 {
     class TextException : Exception
     {
-        readonly string _text;
-
-        public TextException(string text)
-            : base("This exception type provides ToString() access to details only.")
-        {
-            _text = text;
-        }
+        public TextException(){}
 
         public override string ToString()
         {
-            return _text;
+            return StackTrace;
         }
+        [JsonIgnore]
+        public string RealStackTrace { get; set; }
+        public override string StackTrace { get { return RealStackTrace; } }
+        [JsonIgnore]
+        public string RealMessage { get; set; }
+        public override string Message { get { return RealMessage; } }
+
+        [JsonIgnore]
+        public string RealSource { get; set; }
+        public override string Source { get { return RealSource; } }
+
+        public string TypeName { get; set; }
     }
 }
